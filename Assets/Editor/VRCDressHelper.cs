@@ -20,9 +20,11 @@ namespace Qyudev.Editor
 			}
 		}
 
-		GameObject          _go_Avatar								= null;
-		GameObject          _go_Dress								= null;
-		GUIStyle            _style_Error							= null;
+		bool                _isIncludeInactive                      = false;
+
+		GameObject          _go_Avatar                              = null;
+		GameObject          _go_Dress                               = null;
+		GUIStyle            _style_Error                            = null;
 
 		GameObject          _go_OriginalSkinnedMeshRenderer         = null;
 
@@ -51,35 +53,52 @@ namespace Qyudev.Editor
 			GUILayout.EndHorizontal();
 
 			GUILayout.Space( 10f );
-			GUILayout.Label( "---------- Generic utility ----------" );
+			GUILayout.Label( "---------- Main ----------" );
 
 			_GUILayout_TransferBonesToTarget();
 			_GUILayout_SelectDressBones();
 
 			GUILayout.Space( 10f );
-			GUILayout.Label( "---------- Humanoid dress utility ----------" );
+			GUILayout.Label( "---------- Alt ----------" );
 
 			if( !_GUILayout_TransferBonesToTarget_BasedOnHumanoid() )
-				EditorGUILayout.HelpBox( "If the dress's avatar rig setting is Humanoid, you can access the function for dress up even if the bone names are different.", MessageType.Info );
+				EditorGUILayout.HelpBox( "If dress has an animator and the avatar set for that animator is humanoid, you can use the dress up function even if the dress and avatar's bone transforms have different names.", MessageType.Info );
 
 			if( !_GUILayout_RestoreDressBones() )
-				EditorGUILayout.HelpBox( "If the dress's avatar rig setting is Humanoid, you can retrieve the already installed bone transforms.", MessageType.Info );
+				EditorGUILayout.HelpBox( "If dress has an animator and the avatar set for that animator is humanoid, you can restore already installed bone transforms into dress. (Only after dressing up using the Alt function)", MessageType.Info );
 
+			GUILayout.Space( 10f );
 			GUILayout.Label( "---------- Copy and paste bounds value ----------" );
+			EditorGUILayout.HelpBox( "If your dress is sometimes not visible from the edge of someone else's view, try this feature.", MessageType.None );
 			_GUILayout_SkinnedMeshRendererBoundEdit();
+
+			GUILayout.Space( 10f );
+			GUILayout.Label( "---------- Set anchor override to spine bone ----------" );
+			EditorGUILayout.HelpBox( "If your body and dress receive different light intensity, try this feature.", MessageType.None );
+			_GUILayout_AnchorOverride();
+
+			GUILayout.Space( 10f );
+			_isIncludeInactive = GUILayout.Toggle( _isIncludeInactive, "Include inactive gameobjects" );
 		}
 
 		void _GUILayout_TransferBonesToTarget()
 		{
-			if( _go_Avatar == null || _go_Dress == null )
-				return;
+			SkinnedMeshRenderer targetRenderer = null, dressRenderer = null;
 
-			SkinnedMeshRenderer targetRenderer = _go_Avatar.GetComponentInChildren<SkinnedMeshRenderer>();
-			SkinnedMeshRenderer dressRenderer = _go_Dress.GetComponentInChildren<SkinnedMeshRenderer>();
-			if( targetRenderer == null )
-				GUILayout.Label( "Target does not have an SkinnedMeshRenderer.", _style_Error );
-			if( dressRenderer == null )
-				GUILayout.Label( "Dress does not have an SkinnedMeshRenderer.", _style_Error );
+			if( _go_Avatar != null )
+			{
+				targetRenderer = _go_Avatar.GetComponentInChildren<SkinnedMeshRenderer>();
+				if( targetRenderer == null )
+					GUILayout.Label( "Avatar does not have an SkinnedMeshRenderer.", _style_Error );
+			}
+
+			if( _go_Dress != null )
+			{
+				dressRenderer = _go_Dress.GetComponentInChildren<SkinnedMeshRenderer>(); ;
+				if( dressRenderer == null )
+					GUILayout.Label( "Dress does not have an SkinnedMeshRenderer.", _style_Error );
+			}
+
 			if( targetRenderer != null && dressRenderer != null )
 			{
 				if( GUILayout.Button( "Dress up!" ) )
@@ -137,7 +156,7 @@ namespace Qyudev.Editor
 			if( _go_Dress == null )
 				return false;
 
-			SkinnedMeshRenderer renderer = _go_Dress.GetComponentInChildren<SkinnedMeshRenderer>(true);
+			SkinnedMeshRenderer renderer = _go_Dress.GetComponentInChildren<SkinnedMeshRenderer>(_isIncludeInactive);
 
 			if( renderer == null )
 				return false;
@@ -161,7 +180,7 @@ namespace Qyudev.Editor
 				return false;
 
 			Animator animator = _go_Dress.GetComponent<Animator>();
-			SkinnedMeshRenderer renderer = _go_Dress.GetComponentInChildren<SkinnedMeshRenderer>(true);
+			SkinnedMeshRenderer renderer = _go_Dress.GetComponentInChildren<SkinnedMeshRenderer>(_isIncludeInactive);
 
 			if( animator == null || renderer == null )
 				return false;
@@ -230,26 +249,26 @@ namespace Qyudev.Editor
 			return true;
 		}
 
-		void _GUILayout_SkinnedMeshRendererBoundEdit()
+		bool _GUILayout_SkinnedMeshRendererBoundEdit()
 		{
 			if( _go_Avatar == null )
-				return;
+				return false;
 
 			GUILayout.BeginHorizontal();
 			GUILayout.Label( "Original renderer", GUILayout.Width( 120f ) );
 			_go_OriginalSkinnedMeshRenderer = EditorGUILayout.ObjectField( _go_OriginalSkinnedMeshRenderer, typeof( GameObject ), true ) as GameObject;
 			GUILayout.EndHorizontal();
 			if( _go_OriginalSkinnedMeshRenderer == null )
-				return;
+				return false;
 
 			SkinnedMeshRenderer renderer_Original = _go_OriginalSkinnedMeshRenderer.GetComponent<SkinnedMeshRenderer>();
 			if( renderer_Original == null )
-				return;
+				return false;
 
-			Action<bool> action_PasteBounds = ( bool isIncludeInactive ) =>
+			if( GUILayout.Button( "Paste bounds value" ) )
 			{
 				Bounds originalLocalBounds = renderer_Original.localBounds;
-				foreach( SkinnedMeshRenderer renderer in _go_Avatar.GetComponentsInChildren<SkinnedMeshRenderer>( isIncludeInactive ) )
+				foreach( SkinnedMeshRenderer renderer in _go_Avatar.GetComponentsInChildren<SkinnedMeshRenderer>( _isIncludeInactive ) )
 				{
 					if( renderer.GetHashCode() == renderer_Original.GetHashCode() )
 						continue;
@@ -257,13 +276,60 @@ namespace Qyudev.Editor
 					Undo.RecordObject( renderer, "Paste bounds" );
 					renderer.localBounds = originalLocalBounds;
 				}
-			};
+			}
 
-			if( GUILayout.Button( "Paste bounds value" ) )
-				action_PasteBounds( true );
+			return true;
+		}
 
-			if( GUILayout.Button( "Paste bounds value - exclude inactive" ) )
-				action_PasteBounds( false );
+		bool _GUILayout_AnchorOverride()
+		{
+			if( _go_Avatar == null )
+				return false;
+
+			Animator animator_Target = _go_Avatar.GetComponent<Animator>();
+			bool isTargetHuman = false;
+
+			if( animator_Target != null )
+				isTargetHuman = animator_Target.isHuman;
+
+			if( !isTargetHuman )
+				return false;
+
+			Transform transform_Spine = animator_Target.GetBoneTransform( HumanBodyBones.Spine );
+			if( transform_Spine == null )
+				return false;
+
+			if( GUILayout.Button( "Set all anchor override" ) )
+			{
+				foreach( SkinnedMeshRenderer renderer in _go_Avatar.GetComponentsInChildren<SkinnedMeshRenderer>( _isIncludeInactive ) )
+				{
+					_SetAnchorOverride( transform_Spine, renderer );
+				}
+			}
+
+			if( GUILayout.Button( "Set only selected objects anchor override" ) )
+			{
+				UnityEngine.Object[] objects = Selection.objects;
+				for( int i = 0; i < objects.Length; i++ )
+				{
+					GameObject go = objects[i] as GameObject;
+					if( go == null )
+						continue;
+
+					foreach( SkinnedMeshRenderer renderer in go.GetComponentsInChildren<SkinnedMeshRenderer>( _isIncludeInactive ) )
+					{
+						_SetAnchorOverride( transform_Spine, renderer );
+					}
+				}
+			}
+
+			return true;
+		}
+
+		void _SetAnchorOverride( Transform anchor, SkinnedMeshRenderer target )
+		{
+			Undo.RecordObject( target, "Setting anchor override" );
+			target.probeAnchor = anchor;
 		}
 
 		void _ChangeParent( Transform transform, Transform newParent )
