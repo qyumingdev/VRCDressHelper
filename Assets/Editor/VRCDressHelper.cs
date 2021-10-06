@@ -1,4 +1,10 @@
-﻿using System;
+﻿/*
+	VRCDressHelper Ver 0.1
+	Created by Qyuming
+	https://github.com/qyumingdev/VRCDressHelper
+ */
+
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using UnityEditor;
