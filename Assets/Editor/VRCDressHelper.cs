@@ -1,5 +1,5 @@
 ﻿/*
-	VRCDressHelper Ver 0.1
+	VRCDressHelper Ver 0.2
 	Created by Qyuming
 	https://github.com/qyumingdev/VRCDressHelper
  */
@@ -12,6 +12,7 @@ using UnityEngine;
 
 namespace Qyudev.Editor
 {
+#if UNITY_EDITOR
 	class VRCDressHelper : EditorWindow
 	{
 		class BoneData
@@ -409,4 +410,5 @@ namespace Qyudev.Editor
 			}
 		}
 	}
+#endif
 }
