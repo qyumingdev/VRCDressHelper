@@ -2,6 +2,8 @@
 
 This Unity tool automatically moves the bones of the dress.
 
+![dresshelper01](https://user-images.githubusercontent.com/89522358/142358810-7ad07b46-f366-4a76-af2e-173ec8930d5d.png)
+
 
 # Features
 
