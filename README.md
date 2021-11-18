@@ -15,4 +15,4 @@ This Unity tool automatically moves the bones of the dress.
 
 - Set Anchor override to spine. (If the body and clothes receive different light)
 
-- Option to attach a ParentConstraint component instead of moving the bones to a lower hierarchy.
+- Option to attach a ParentConstraint component instead of moving the bones to a child hierarchy.
