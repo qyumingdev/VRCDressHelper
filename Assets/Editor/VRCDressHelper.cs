@@ -1,5 +1,5 @@
 ﻿/*
-	VRCDressHelper Ver 0.2
+	VRCDressHelper Ver 0.3
 	Created by Qyuming
 	https://github.com/qyumingdev/VRCDressHelper
  */
@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.Animations;
 
 namespace Qyudev.Editor
 {
@@ -31,6 +32,10 @@ namespace Qyudev.Editor
 
 		GameObject          _go_Avatar                              = null;
 		GameObject          _go_Dress                               = null;
+
+		SerializedObject    _serializedObject                       = null;
+		[SerializeField]
+		public GameObject[] _go_BoneParentConstraints               = new GameObject[0];
 		GUIStyle            _style_Error                            = null;
 
 		GameObject          _go_OriginalSkinnedMeshRenderer         = null;
@@ -46,11 +51,13 @@ namespace Qyudev.Editor
 		{
 			_style_Error = new GUIStyle();
 			_style_Error.normal.textColor = Color.red;
+			_serializedObject = new SerializedObject( this );
 		}
 
 		void OnGUI()
 		{
 			GUILayout.BeginHorizontal();
+
 			GUILayout.Label( "Avatar", GUILayout.Width( 60f ) );
 			_go_Avatar = EditorGUILayout.ObjectField( _go_Avatar, typeof( GameObject ), true ) as GameObject;
 			GUILayout.EndHorizontal();
@@ -108,14 +115,56 @@ namespace Qyudev.Editor
 
 			if( targetRenderer != null && dressRenderer != null )
 			{
+				if( _serializedObject == null )
+					_serializedObject = new SerializedObject( this );
+
+				SerializedProperty serializedProperty = _serializedObject.FindProperty("_go_BoneParentConstraints");
+				EditorGUILayout.PropertyField( serializedProperty, new GUIContent( "ParentConstraint List" ) );
+				_serializedObject.ApplyModifiedProperties();
+
 				if( GUILayout.Button( "Dress up!" ) )
 				{
 					var targetBones = targetRenderer.bones;
 					foreach( Transform bone in dressRenderer.bones )
 					{
+						bool isParentConstraintTarget = false;
+
+						foreach( var excludeBone in _go_BoneParentConstraints )
+						{
+							if( excludeBone == null )
+								continue;
+
+							if( excludeBone.name == bone.name )
+							{
+								isParentConstraintTarget = true;
+								break;
+							}
+						}
+
 						var targetBone = Array.Find( targetBones, v => { return v.name == bone.name; } );
 						if( targetBone != null )
-							_ChangeParent( bone, targetBone );
+						{
+							if( !isParentConstraintTarget )
+							{
+								_ChangeParent( bone, targetBone );
+							}
+							else
+							{
+								ParentConstraint parentConstraint = bone.GetComponent<ParentConstraint>();
+								if( parentConstraint != null )
+								{
+									Undo.DestroyObjectImmediate( parentConstraint );
+									parentConstraint = null;
+								}
+								parentConstraint = Undo.AddComponent<ParentConstraint>( bone.gameObject );
+
+								ConstraintSource constraintSource = new ConstraintSource();
+								constraintSource.sourceTransform = targetBone;
+								constraintSource.weight = 1f;
+								parentConstraint.AddSource( constraintSource );
+								parentConstraint.constraintActive = true;
+							}
+						}
 					}
 				}
 			}
@@ -348,65 +397,65 @@ namespace Qyudev.Editor
 		{
 			switch( type )
 			{
-			case HumanBodyBones.Hips: return HumanBodyBones.LastBone;
-			case HumanBodyBones.LeftUpperLeg: return HumanBodyBones.Hips;
-			case HumanBodyBones.RightUpperLeg: return HumanBodyBones.Hips;
-			case HumanBodyBones.LeftLowerLeg: return HumanBodyBones.LeftUpperLeg;
-			case HumanBodyBones.RightLowerLeg: return HumanBodyBones.RightUpperLeg;
-			case HumanBodyBones.LeftFoot: return HumanBodyBones.LeftLowerLeg;
-			case HumanBodyBones.RightFoot: return HumanBodyBones.RightLowerLeg;
-			case HumanBodyBones.Spine: return HumanBodyBones.Hips;
-			case HumanBodyBones.Chest: return HumanBodyBones.Hips;
-			case HumanBodyBones.UpperChest: return HumanBodyBones.Chest;
-			case HumanBodyBones.Neck: return isUpperChestExist ? HumanBodyBones.UpperChest : HumanBodyBones.Chest;
-			case HumanBodyBones.Head: return HumanBodyBones.Neck;
-			case HumanBodyBones.LeftShoulder: return isUpperChestExist ? HumanBodyBones.UpperChest : HumanBodyBones.Chest;
-			case HumanBodyBones.RightShoulder: return isUpperChestExist ? HumanBodyBones.UpperChest : HumanBodyBones.Chest;
-			case HumanBodyBones.LeftUpperArm: return HumanBodyBones.LeftShoulder;
-			case HumanBodyBones.RightUpperArm: return HumanBodyBones.RightShoulder;
-			case HumanBodyBones.LeftLowerArm: return HumanBodyBones.LeftUpperArm;
-			case HumanBodyBones.RightLowerArm: return HumanBodyBones.RightUpperArm;
-			case HumanBodyBones.LeftHand: return HumanBodyBones.LeftLowerArm;
-			case HumanBodyBones.RightHand: return HumanBodyBones.RightLowerArm;
-			case HumanBodyBones.LeftToes: return HumanBodyBones.LeftFoot;
-			case HumanBodyBones.RightToes: return HumanBodyBones.RightFoot;
-			case HumanBodyBones.LeftEye: return HumanBodyBones.Head;
-			case HumanBodyBones.RightEye: return HumanBodyBones.Head;
-			case HumanBodyBones.Jaw: return HumanBodyBones.Head;
-			case HumanBodyBones.LeftThumbProximal: return HumanBodyBones.LeftHand;
-			case HumanBodyBones.LeftThumbIntermediate: return HumanBodyBones.LeftThumbProximal;
-			case HumanBodyBones.LeftThumbDistal: return HumanBodyBones.LeftThumbIntermediate;
-			case HumanBodyBones.LeftIndexProximal: return HumanBodyBones.LeftHand;
-			case HumanBodyBones.LeftIndexIntermediate: return HumanBodyBones.LeftIndexProximal;
-			case HumanBodyBones.LeftIndexDistal: return HumanBodyBones.LeftIndexIntermediate;
-			case HumanBodyBones.LeftMiddleProximal: return HumanBodyBones.LeftHand;
-			case HumanBodyBones.LeftMiddleIntermediate: return HumanBodyBones.LeftMiddleProximal;
-			case HumanBodyBones.LeftMiddleDistal: return HumanBodyBones.LeftMiddleIntermediate;
-			case HumanBodyBones.LeftRingProximal: return HumanBodyBones.LeftHand;
-			case HumanBodyBones.LeftRingIntermediate: return HumanBodyBones.LeftRingProximal;
-			case HumanBodyBones.LeftRingDistal: return HumanBodyBones.LeftRingIntermediate;
-			case HumanBodyBones.LeftLittleProximal: return HumanBodyBones.LeftHand;
-			case HumanBodyBones.LeftLittleIntermediate: return HumanBodyBones.LeftLittleProximal;
-			case HumanBodyBones.LeftLittleDistal: return HumanBodyBones.LeftLittleIntermediate;
-			case HumanBodyBones.RightThumbProximal: return HumanBodyBones.RightHand;
-			case HumanBodyBones.RightThumbIntermediate: return HumanBodyBones.RightThumbProximal;
-			case HumanBodyBones.RightThumbDistal: return HumanBodyBones.RightThumbIntermediate;
-			case HumanBodyBones.RightIndexProximal: return HumanBodyBones.RightHand;
-			case HumanBodyBones.RightIndexIntermediate: return HumanBodyBones.RightIndexProximal;
-			case HumanBodyBones.RightIndexDistal: return HumanBodyBones.RightIndexIntermediate;
-			case HumanBodyBones.RightMiddleProximal: return HumanBodyBones.RightHand;
-			case HumanBodyBones.RightMiddleIntermediate: return HumanBodyBones.RightMiddleProximal;
-			case HumanBodyBones.RightMiddleDistal: return HumanBodyBones.RightMiddleIntermediate;
-			case HumanBodyBones.RightRingProximal: return HumanBodyBones.RightHand;
-			case HumanBodyBones.RightRingIntermediate: return HumanBodyBones.RightRingProximal;
-			case HumanBodyBones.RightRingDistal: return HumanBodyBones.RightRingIntermediate;
-			case HumanBodyBones.RightLittleProximal: return HumanBodyBones.RightHand;
-			case HumanBodyBones.RightLittleIntermediate: return HumanBodyBones.RightLittleProximal;
-			case HumanBodyBones.RightLittleDistal: return HumanBodyBones.RightLittleIntermediate;
+				case HumanBodyBones.Hips: return HumanBodyBones.LastBone;
+				case HumanBodyBones.LeftUpperLeg: return HumanBodyBones.Hips;
+				case HumanBodyBones.RightUpperLeg: return HumanBodyBones.Hips;
+				case HumanBodyBones.LeftLowerLeg: return HumanBodyBones.LeftUpperLeg;
+				case HumanBodyBones.RightLowerLeg: return HumanBodyBones.RightUpperLeg;
+				case HumanBodyBones.LeftFoot: return HumanBodyBones.LeftLowerLeg;
+				case HumanBodyBones.RightFoot: return HumanBodyBones.RightLowerLeg;
+				case HumanBodyBones.Spine: return HumanBodyBones.Hips;
+				case HumanBodyBones.Chest: return HumanBodyBones.Hips;
+				case HumanBodyBones.UpperChest: return HumanBodyBones.Chest;
+				case HumanBodyBones.Neck: return isUpperChestExist ? HumanBodyBones.UpperChest : HumanBodyBones.Chest;
+				case HumanBodyBones.Head: return HumanBodyBones.Neck;
+				case HumanBodyBones.LeftShoulder: return isUpperChestExist ? HumanBodyBones.UpperChest : HumanBodyBones.Chest;
+				case HumanBodyBones.RightShoulder: return isUpperChestExist ? HumanBodyBones.UpperChest : HumanBodyBones.Chest;
+				case HumanBodyBones.LeftUpperArm: return HumanBodyBones.LeftShoulder;
+				case HumanBodyBones.RightUpperArm: return HumanBodyBones.RightShoulder;
+				case HumanBodyBones.LeftLowerArm: return HumanBodyBones.LeftUpperArm;
+				case HumanBodyBones.RightLowerArm: return HumanBodyBones.RightUpperArm;
+				case HumanBodyBones.LeftHand: return HumanBodyBones.LeftLowerArm;
+				case HumanBodyBones.RightHand: return HumanBodyBones.RightLowerArm;
+				case HumanBodyBones.LeftToes: return HumanBodyBones.LeftFoot;
+				case HumanBodyBones.RightToes: return HumanBodyBones.RightFoot;
+				case HumanBodyBones.LeftEye: return HumanBodyBones.Head;
+				case HumanBodyBones.RightEye: return HumanBodyBones.Head;
+				case HumanBodyBones.Jaw: return HumanBodyBones.Head;
+				case HumanBodyBones.LeftThumbProximal: return HumanBodyBones.LeftHand;
+				case HumanBodyBones.LeftThumbIntermediate: return HumanBodyBones.LeftThumbProximal;
+				case HumanBodyBones.LeftThumbDistal: return HumanBodyBones.LeftThumbIntermediate;
+				case HumanBodyBones.LeftIndexProximal: return HumanBodyBones.LeftHand;
+				case HumanBodyBones.LeftIndexIntermediate: return HumanBodyBones.LeftIndexProximal;
+				case HumanBodyBones.LeftIndexDistal: return HumanBodyBones.LeftIndexIntermediate;
+				case HumanBodyBones.LeftMiddleProximal: return HumanBodyBones.LeftHand;
+				case HumanBodyBones.LeftMiddleIntermediate: return HumanBodyBones.LeftMiddleProximal;
+				case HumanBodyBones.LeftMiddleDistal: return HumanBodyBones.LeftMiddleIntermediate;
+				case HumanBodyBones.LeftRingProximal: return HumanBodyBones.LeftHand;
+				case HumanBodyBones.LeftRingIntermediate: return HumanBodyBones.LeftRingProximal;
+				case HumanBodyBones.LeftRingDistal: return HumanBodyBones.LeftRingIntermediate;
+				case HumanBodyBones.LeftLittleProximal: return HumanBodyBones.LeftHand;
+				case HumanBodyBones.LeftLittleIntermediate: return HumanBodyBones.LeftLittleProximal;
+				case HumanBodyBones.LeftLittleDistal: return HumanBodyBones.LeftLittleIntermediate;
+				case HumanBodyBones.RightThumbProximal: return HumanBodyBones.RightHand;
+				case HumanBodyBones.RightThumbIntermediate: return HumanBodyBones.RightThumbProximal;
+				case HumanBodyBones.RightThumbDistal: return HumanBodyBones.RightThumbIntermediate;
+				case HumanBodyBones.RightIndexProximal: return HumanBodyBones.RightHand;
+				case HumanBodyBones.RightIndexIntermediate: return HumanBodyBones.RightIndexProximal;
+				case HumanBodyBones.RightIndexDistal: return HumanBodyBones.RightIndexIntermediate;
+				case HumanBodyBones.RightMiddleProximal: return HumanBodyBones.RightHand;
+				case HumanBodyBones.RightMiddleIntermediate: return HumanBodyBones.RightMiddleProximal;
+				case HumanBodyBones.RightMiddleDistal: return HumanBodyBones.RightMiddleIntermediate;
+				case HumanBodyBones.RightRingProximal: return HumanBodyBones.RightHand;
+				case HumanBodyBones.RightRingIntermediate: return HumanBodyBones.RightRingProximal;
+				case HumanBodyBones.RightRingDistal: return HumanBodyBones.RightRingIntermediate;
+				case HumanBodyBones.RightLittleProximal: return HumanBodyBones.RightHand;
+				case HumanBodyBones.RightLittleIntermediate: return HumanBodyBones.RightLittleProximal;
+				case HumanBodyBones.RightLittleDistal: return HumanBodyBones.RightLittleIntermediate;
 
-			case HumanBodyBones.LastBone:
-			default:
-				return HumanBodyBones.LastBone;
+				case HumanBodyBones.LastBone:
+				default:
+					return HumanBodyBones.LastBone;
 			}
 		}
 	}
