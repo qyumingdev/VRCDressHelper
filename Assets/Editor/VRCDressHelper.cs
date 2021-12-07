@@ -1,5 +1,5 @@
 ﻿/*
-	VRCDressHelper Ver 0.3
+	VRCDressHelper Ver 0.4
 	Created by Qyuming
 	https://github.com/qyumingdev/VRCDressHelper
  */
