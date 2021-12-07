@@ -141,7 +141,11 @@ namespace Qyudev.Editor
 							}
 						}
 
-						var targetBone = Array.Find( targetBones, v => { return v.name == bone.name; } );
+						var targetBone = Array.Find( targetBones, v => {
+							if( v == null )
+								return false;
+							return v.name == bone.name; 
+						} );
 						if( targetBone != null )
 						{
 							if( !isParentConstraintTarget )
