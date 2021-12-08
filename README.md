@@ -5,6 +5,11 @@ This Unity tool automatically moves the bones of the dress.
 ![dresshelper01](https://user-images.githubusercontent.com/89522358/142358810-7ad07b46-f366-4a76-af2e-173ec8930d5d.png)
 
 
+# Download
+
+<a id="raw-url" href="https://github.com/qyumingdev/VRCDressHelper/releases/download/v0.4/VRCDressHelper.v0.4.Package.unitypackage">Download the latest build</a>
+
+
 # Features
 
 - Find bones with the same name and move them automatically.
@@ -16,3 +21,4 @@ This Unity tool automatically moves the bones of the dress.
 - Set Anchor override to spine. (If the body and clothes receive different light)
 
 - Option to attach a ParentConstraint component instead of moving the bones to a child hierarchy.
+
